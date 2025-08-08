@@ -1,0 +1,148 @@
+-- Haidz Fling v2 - Gọn, ổn định, đầy đủ chức năng
+local Players = game:GetService("Players")
+local LocalPlayer = Players.LocalPlayer
+local RunService = game:GetService("RunService")
+
+-- Save vị trí cũ
+local originalCFrame
+
+-- GUI
+local ScreenGui = Instance.new("ScreenGui", game.CoreGui)
+ScreenGui.Name = "HaidzFlingGui"
+
+-- Nút Ẩn/Hiện
+local toggleButton = Instance.new("TextButton")
+toggleButton.Parent = ScreenGui
+toggleButton.Position = UDim2.new(1, -160, 0, 10)
+toggleButton.Size = UDim2.new(0, 150, 0, 30)
+toggleButton.Text = "Ẩn/Hiện Haidz (menu)"
+toggleButton.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
+toggleButton.TextColor3 = Color3.new(1, 1, 1)
+
+-- Frame chính
+local mainFrame = Instance.new("Frame", ScreenGui)
+mainFrame.Size = UDim2.new(0, 200, 0, 110)
+mainFrame.Position = UDim2.new(1, -210, 0, 50)
+mainFrame.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+mainFrame.Visible = true
+mainFrame.BorderSizePixel = 0
+
+-- Dropdown chọn player
+local dropdown = Instance.new("TextButton", mainFrame)
+dropdown.Size = UDim2.new(1, -20, 0, 30)
+dropdown.Position = UDim2.new(0, 10, 0, 10)
+dropdown.Text = "Chọn người chơi ↓"
+dropdown.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+dropdown.TextColor3 = Color3.new(1, 1, 1)
+
+local dropdownList = Instance.new("Frame", mainFrame)
+dropdownList.Size = UDim2.new(1, -20, 0, 100)
+dropdownList.Position = UDim2.new(0, 10, 0, 40)
+dropdownList.Visible = false
+dropdownList.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+dropdownList.BorderSizePixel = 0
+dropdownList.ClipsDescendants = true
+
+local selectedPlayer = nil
+
+dropdown.MouseButton1Click:Connect(function()
+	dropdownList.Visible = not dropdownList.Visible
+end)
+
+-- Tạo danh sách người chơi
+local function refreshDropdown()
+	dropdownList:ClearAllChildren()
+	local y = 0
+	for _, plr in pairs(Players:GetPlayers()) do
+		if plr ~= LocalPlayer then
+			local btn = Instance.new("TextButton", dropdownList)
+			btn.Size = UDim2.new(1, 0, 0, 25)
+			btn.Position = UDim2.new(0, 0, 0, y)
+			btn.Text = plr.Name
+			btn.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+			btn.TextColor3 = Color3.new(1, 1, 1)
+			btn.MouseButton1Click:Connect(function()
+				selectedPlayer = plr
+				dropdown.Text = "Đã chọn: " .. plr.Name
+				dropdownList.Visible = false
+			end)
+			y = y + 25
+		end
+	end
+	dropdownList.Size = UDim2.new(1, -20, 0, y)
+end
+refreshDropdown()
+Players.PlayerAdded:Connect(refreshDropdown)
+Players.PlayerRemoving:Connect(refreshDropdown)
+
+-- Nút Fling
+local flingButton = Instance.new("TextButton", mainFrame)
+flingButton.Size = UDim2.new(1, -20, 0, 25)
+flingButton.Position = UDim2.new(0, 10, 0, 80)
+flingButton.Text = "Bắt đầu Fling"
+flingButton.BackgroundColor3 = Color3.fromRGB(100, 30, 30)
+flingButton.TextColor3 = Color3.new(1, 1, 1)
+
+-- Nút Stop
+local stopButton = Instance.new("TextButton", mainFrame)
+stopButton.Size = UDim2.new(0, 80, 0, 25)
+stopButton.Position = UDim2.new(0, 10, 0, 110)
+stopButton.Text = "Stop"
+stopButton.BackgroundColor3 = Color3.fromRGB(70, 70, 70)
+stopButton.TextColor3 = Color3.new(1, 1, 1)
+stopButton.Visible = false
+
+-- Fling function
+local flingConnection
+local function startFling(target)
+	local char = LocalPlayer.Character
+	if not (char and char:FindFirstChild("HumanoidRootPart")) then return end
+	originalCFrame = char:FindFirstChild("HumanoidRootPart").CFrame
+
+	flingConnection = RunService.Heartbeat:Connect(function()
+		if not target.Character or not target.Character:FindFirstChild("HumanoidRootPart") then return end
+		local targetHRP = target.Character.HumanoidRootPart
+		local hrp = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+		if hrp then
+			hrp.CFrame = targetHRP.CFrame * CFrame.new(0, 0, 2)
+			hrp.Velocity = Vector3.new(9999, 9999, 9999)
+			hrp.RotVelocity = Vector3.new(9999, 9999, 9999)
+		end
+	end)
+
+	stopButton.Visible = true
+end
+
+local function stopFling()
+	if flingConnection then
+		flingConnection:Disconnect()
+		flingConnection = nil
+	end
+	local hrp = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+	if hrp and originalCFrame then
+		hrp.CFrame = originalCFrame
+	end
+	stopButton.Visible = false
+end
+
+flingButton.MouseButton1Click:Connect(function()
+	if selectedPlayer then
+		startFling(selectedPlayer)
+	end
+end)
+
+stopButton.MouseButton1Click:Connect(function()
+	stopFling()
+end)
+
+-- Toggle GUI
+toggleButton.MouseButton1Click:Connect(function()
+	mainFrame.Visible = not mainFrame.Visible
+end)
+
+-- Tự động khởi động lại sau khi chết
+LocalPlayer.CharacterAdded:Connect(function(char)
+	char:WaitForChild("HumanoidRootPart")
+	wait(1)
+	refreshDropdown()
+end)
