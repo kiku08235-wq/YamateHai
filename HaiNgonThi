@@ -1,0 +1,162 @@
+-- Haidz Fling GUI v2.2 - Nút góc phải & quay về sau khi fling
+
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local LocalPlayer = Players.LocalPlayer
+
+local originalCFrame = nil -- Vị trí ban đầu
+
+-- Hàm tạo GUI
+local function createFlingGUI()
+	local playerGui = LocalPlayer:WaitForChild("PlayerGui")
+	if playerGui:FindFirstChild("HaidzFlingGui") then
+		playerGui.HaidzFlingGui:Destroy()
+	end
+
+	local gui = Instance.new("ScreenGui", playerGui)
+	gui.Name = "HaidzFlingGui"
+	gui.ResetOnSpawn = false
+
+	local mainFrame = Instance.new("Frame", gui)
+	mainFrame.Size = UDim2.new(0, 280, 0, 220)
+	mainFrame.Position = UDim2.new(0.5, -140, 0.5, -110)
+	mainFrame.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
+	mainFrame.BorderSizePixel = 0
+	mainFrame.Active = true
+	mainFrame.Draggable = true
+	mainFrame.Visible = true
+
+	local toggleButton = Instance.new("TextButton", gui)
+	toggleButton.Size = UDim2.new(0, 150, 0, 30)
+	toggleButton.Position = UDim2.new(1, -160, 0, 10) -- Góc trên phải
+	toggleButton.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+	toggleButton.Text = "Ẩn Haidz"
+	toggleButton.TextColor3 = Color3.new(1, 1, 1)
+	toggleButton.Font = Enum.Font.SourceSansBold
+	toggleButton.TextSize = 18
+
+	toggleButton.MouseButton1Click:Connect(function()
+		mainFrame.Visible = not mainFrame.Visible
+		toggleButton.Text = mainFrame.Visible and "Ẩn Haidz" or "Hiện Haidz"
+	end)
+
+	local title = Instance.new("TextLabel", mainFrame)
+	title.Size = UDim2.new(1, 0, 0, 30)
+	title.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+	title.Text = "Haidz Fling"
+	title.TextColor3 = Color3.new(1, 1, 1)
+	title.Font = Enum.Font.SourceSansBold
+	title.TextSize = 20
+
+	local dropdownToggle = Instance.new("TextButton", mainFrame)
+	dropdownToggle.Size = UDim2.new(0.9, 0, 0, 30)
+	dropdownToggle.Position = UDim2.new(0.05, 0, 0.2, 0)
+	dropdownToggle.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+	dropdownToggle.Text = "Chọn Player ↓"
+	dropdownToggle.TextColor3 = Color3.new(1, 1, 1)
+	dropdownToggle.Font = Enum.Font.SourceSans
+	dropdownToggle.TextSize = 18
+
+	local dropdownFrame = Instance.new("Frame", mainFrame)
+	dropdownFrame.Size = UDim2.new(0.9, 0, 0, 100)
+	dropdownFrame.Position = UDim2.new(0.05, 0, 0.35, 0)
+	dropdownFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+	dropdownFrame.Visible = false
+	dropdownFrame.ClipsDescendants = true
+
+	local scrolling = Instance.new("ScrollingFrame", dropdownFrame)
+	scrolling.Size = UDim2.new(1, 0, 1, 0)
+	scrolling.CanvasSize = UDim2.new(0, 0, 0, 0)
+	scrolling.ScrollBarThickness = 6
+	scrolling.BackgroundTransparency = 1
+	scrolling.AutomaticCanvasSize = Enum.AutomaticSize.Y
+
+	local UIListLayout = Instance.new("UIListLayout", scrolling)
+	UIListLayout.SortOrder = Enum.SortOrder.LayoutOrder
+	UIListLayout.Padding = UDim.new(0, 5)
+
+	local selectedTarget = nil
+	local flingOn = false
+	local connection
+
+	local function stopFling()
+		flingOn = false
+		if connection then connection:Disconnect() end
+
+		-- Trở về vị trí ban đầu nếu có
+		local hrp = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+		if hrp and originalCFrame then
+			hrp.CFrame = originalCFrame
+		end
+	end
+
+	local function startFling()
+		local hrp = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+		if not hrp or not selectedTarget or not selectedTarget.Character then return end
+
+		originalCFrame = hrp.CFrame -- Lưu vị trí trước khi fling
+
+		flingOn = true
+		connection = RunService.Heartbeat:Connect(function()
+			local targetHRP = selectedTarget.Character:FindFirstChild("HumanoidRootPart")
+			local myHRP = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+			if not flingOn or not targetHRP or not myHRP then return end
+
+			myHRP.CFrame = targetHRP.CFrame
+			myHRP.Velocity = Vector3.new(9999, 9999, 9999)
+			myHRP.RotVelocity = Vector3.new(10000, 10000, 10000)
+		end)
+	end
+
+	dropdownToggle.MouseButton1Click:Connect(function()
+		dropdownFrame.Visible = not dropdownFrame.Visible
+		dropdownToggle.Text = dropdownFrame.Visible and "Chọn Player ↑" or "Chọn Player ↓"
+	end)
+
+	for _, plr in ipairs(Players:GetPlayers()) do
+		if plr ~= LocalPlayer then
+			local button = Instance.new("TextButton", scrolling)
+			button.Size = UDim2.new(1, 0, 0, 30)
+			button.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+			button.TextColor3 = Color3.new(1, 1, 1)
+			button.Font = Enum.Font.SourceSans
+			button.TextSize = 18
+			button.Text = plr.Name
+
+			button.MouseButton1Click:Connect(function()
+				selectedTarget = plr
+				dropdownToggle.Text = "Đã chọn: " .. plr.Name .. " ↓"
+				dropdownFrame.Visible = false
+			end)
+		end
+	end
+
+	local flingBtn = Instance.new("TextButton", mainFrame)
+	flingBtn.Size = UDim2.new(0.9, 0, 0, 35)
+	flingBtn.Position = UDim2.new(0.05, 0, 0.8, 0)
+	flingBtn.BackgroundColor3 = Color3.fromRGB(60, 0, 0)
+	flingBtn.TextColor3 = Color3.new(1, 1, 1)
+	flingBtn.Font = Enum.Font.SourceSansBold
+	flingBtn.TextSize = 20
+	flingBtn.Text = "Bắt đầu Fling"
+
+	flingBtn.MouseButton1Click:Connect(function()
+		if not flingOn and selectedTarget then
+			startFling()
+			flingBtn.Text = "Dừng Fling"
+		else
+			stopFling()
+			flingBtn.Text = "Bắt đầu Fling"
+		end
+	end)
+
+	-- Reset khi nhân vật chết
+	LocalPlayer.CharacterAdded:Connect(function()
+		stopFling()
+		task.wait(2)
+		createFlingGUI()
+	end)
+end
+
+-- Gọi hàm tạo GUI lần đầu
+createFlingGUI()
